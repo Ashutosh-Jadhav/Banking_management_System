@@ -14,19 +14,26 @@ int main()
         int count ;
     };
 
-    int fd1;
+    int fd1,last;
     struct manager m1 ,m2;
-    char *s = "Hayat";
-    strcpy(m1.mg_name,s);
-    m1.mg_id = 1001 ;
-    m1.password = 1234;
-    m1.count = 0;
-
-    fd1 = open("manager_db",O_CREAT | O_EXCL | O_RDWR , 0744);
-    write(fd1,&m1,sizeof(m1));
     close(fd1);
     fd1 = open("manager_db",O_RDONLY);
 
+    lseek(fd1,-1*sizeof(m2),SEEK_END);
+
     read(fd1,&m2,sizeof(m2));
+    last = m2.mg_id ;
+    lseek(fd1,0,SEEK_SET);
+
+    while(1){
+    read(fd1,&m2,sizeof(m2));
+
     printf("%s\n",m2.mg_name);
+    printf("%d\n",m2.mg_id);
+    printf("%d\n",m2.password);
+    printf("%d\n",m2.count);
+    if (m2.mg_id == last){
+        break;
+    }
+    }
 }
