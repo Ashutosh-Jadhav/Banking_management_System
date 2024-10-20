@@ -72,27 +72,220 @@ int main()
 
             while(1){
             read(nsd,&num,sizeof(int));
-            if (num > 0 && num < 5){
-                break;
+            if (num <= 0 && num >= 5){
+                continue;
                 }
-            }
+            
 
             printf("choice is : %d\n",num);
             // login_as(num);
             if (num == 1){         // customer
                 read(nsd,&id,sizeof(id));
                 read(nsd,&pas,sizeof(pas));
+
+
                 
             }
 
             else if (num == 2){     // employee
                 read(nsd,&id,sizeof(id));
                 read(nsd,&pas,sizeof(pas));
+
+                
             }
 
             else if (num == 3){      // manager
                 read(nsd,&id,sizeof(id));
                 read(nsd,&pas,sizeof(pas));
+
+                                        // login starts
+                struct manager mg ;
+                int start = id%100;
+                fd1 = open("manager_db",O_RDONLY);
+
+                struct flock lck ;
+                lck.l_start = (start-1)*sizeof(mg);
+                lck.l_len = sizeof(mg) ;
+                lck.l_type = F_RDLCK;
+                lck.l_whence = SEEK_SET;
+                lck.l_pid = getpid();
+                printf("before entering critical...\n");
+                fcntl(fd1,F_SETLKW,&lck);
+                lseek(fd1,(start-1)*sizeof(mg),SEEK_SET);
+                
+                read(fd1,&mg,sizeof(mg));
+
+                // printf("enter key : \n");
+                // getchar();
+                // getchar();
+
+                lck.l_type = F_UNLCK;
+                fcntl(fd1,F_SETLK,&lck);
+                close(fd1);
+                if (mg.count == 1){
+                    status = 2 ;
+                    // write(nsd,&status,sizeof(int));
+                }
+                if (id == mg.mg_id){
+                    if (mg.password == pas){
+                        status = 1 ;
+                        write(nsd,&status,sizeof(int));
+                    }
+                    else {
+                        status = 0 ;
+                        write(nsd,&status,sizeof(int));
+                    }
+                }
+                else {
+                    if (id != mg.mg_id){
+                        status = 0 ;
+                    }
+                    write(nsd,&status,sizeof(int));
+                }
+
+                if (status == 0 || status == 2){exit(0);}
+                else {
+                    mg.count = 1 ;
+                    fd1 = open("manager_db",O_RDWR);
+
+                    struct flock lck ;
+                    lck.l_start = (start-1)*sizeof(mg);
+                    lck.l_len = sizeof(mg) ;
+                    lck.l_type = F_WRLCK;
+                    lck.l_whence = SEEK_SET;
+                    lck.l_pid = getpid();
+                    printf("before entering critical...\n");
+                    fcntl(fd1,F_SETLKW,&lck);
+                    lseek(fd1,(start-1)*sizeof(mg),SEEK_SET);
+                    
+                    write(fd1,&mg,sizeof(mg));
+
+                    lck.l_type = F_UNLCK;
+                    fcntl(fd1,F_SETLK,&lck);
+                    close(fd1);
+                }
+
+                                                // login ends
+                // operations start 
+
+                int op,fd2, last ;             // last :- last id
+                char name[10];
+                while(1){
+                    read(nsd,&op,sizeof(op));
+                    printf("operation is : %d\n",op);
+                    if (op == 1){
+                        int cust_id,start,ack = 1;
+                        struct client cli ;
+                        fd2 = open("clients_db",O_RDWR);
+                        read(nsd,&cust_id,sizeof(cust_id));
+                        start = cust_id % 100;
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli);
+                        lck.l_type = F_WRLCK ;
+                        lck.l_whence = SEEK_SET ;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd2,F_SETLKW,&lck);
+
+                        lseek(fd2,(start-1)*sizeof(cli),SEEK_SET);
+                        read(fd2,&cli,sizeof(cli));
+                        if (cli.count == -1)
+                        {
+                            cli.count = 0 ;
+                        }
+                        else if(cli.count == 0){
+                            cli.count = -1;
+                        }
+                        else {
+                            ack = 0 ;
+                        }
+                        if (ack){
+                            lseek(fd2,(start-1)*sizeof(cli),SEEK_SET);
+                            write(fd2,&cli,sizeof(cli));
+                        }
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd2,F_SETLK,&lck);
+                        write(nsd,&ack,sizeof(ack));
+                        close(fd2);
+                    }
+                    else if (op == 2){
+                        
+                    }
+                    else if(op == 3){
+                        
+                    }
+                    else if(op == 4){
+                        int ack = 1 ;
+                        fd1 = open("manager_db",O_RDWR);
+                        int new_pass ;
+                        struct flock lck ;
+                        read(nsd,&new_pass,sizeof(int));
+                        lck.l_start = (start-1)*sizeof(mg);
+                        lck.l_len = sizeof(mg) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(mg),SEEK_SET);
+                        
+                        mg.password = new_pass;
+                        write(fd1,&mg,sizeof(mg));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&ack,sizeof(ack));
+
+                    }
+                    else if(op == 5) {
+                        fd1 = open("manager_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(mg);
+                        lck.l_len = sizeof(mg) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(mg),SEEK_SET);
+                        mg.count = 0 ;
+                        write(fd1,&mg,sizeof(mg));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        break;
+                    }
+                    else {
+                        fd1 = open("manager_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(mg);
+                        lck.l_len = sizeof(mg) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(mg),SEEK_SET);
+                        mg.count = 0 ;
+                        write(fd1,&mg,sizeof(mg));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        exit(0);
+                    }
+
+
+                    // exit(0);        // remove later
+                }
+
+
             }
 
             else {                  // Admin
@@ -372,7 +565,7 @@ int main()
                     }
                     else if (op == 5){
                         fd1 = open("admin_db",O_RDWR);
-                        int new_pass ;
+                        int new_pass ,ack;
                         struct flock lck ;
                         read(nsd,&new_pass,sizeof(int));
                         lck.l_start = (start-1)*sizeof(ad);
@@ -390,9 +583,31 @@ int main()
                         lck.l_type = F_UNLCK;
                         fcntl(fd1,F_SETLK,&lck);
                         close(fd1);
+                        write(nsd,&ack,sizeof(ack));
+
 
                     }
-                    else {
+                    else if(op == 6) {
+                        fd1 = open("admin_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(ad);
+                        lck.l_len = sizeof(ad) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(ad),SEEK_SET);
+                        ad.count = 0 ;
+                        write(fd1,&ad,sizeof(ad));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        break;
+                    }
+                    else{
                         fd1 = open("admin_db",O_RDWR);
 
                         struct flock lck ;
@@ -413,17 +628,12 @@ int main()
                         exit(0);
                     }
 
-                    // exit(0);         // remove later for while loop
-
+                      // exit(0);         // remove later for while loop
                 }
                 
-
-
             }
             
-
-
-            exit(0);
+            }
         }
         else{
         sleep(1);
