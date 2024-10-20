@@ -123,9 +123,10 @@ int main()
                 else if(c==5){
                     int l_am ;
                     printf("Enter amount of loan : ");
-                    scanf("%d"&l_am);
+                    scanf("%d",&l_am);
                     write(sd,&l_am,sizeof(l_am));
-                    
+                    printf("Applied...\n");
+
                 }
                 else if(c == 6){
                     int new_pas,ack;
@@ -198,7 +199,7 @@ int main()
                     printf("password : ");
                     scanf("%d",&pas);
                     write(sd,&pas,sizeof(pas));
-                    write(sd,&cust_id,sizeof(cust_id));
+                    read(sd,&cust_id,sizeof(cust_id));
                     printf("done...\n");
                     printf("Account No is : %d\n",cust_id);
                 }
@@ -308,7 +309,14 @@ int main()
                     }
                 }
                 else if (c == 2){
-                    
+                    int a_id ,al_id;
+                    printf("Enter Loan ID : ");
+                    scanf("%d",&al_id);
+                    printf("Enter Employeed ID : ");
+                    scanf("%d",&a_id);
+                    write(sd,&al_id,sizeof(al_id));
+                    write(sd,&a_id,sizeof(a_id));
+                    printf("done...\n");
                 }
                 else if (c == 3){
                     char feedback[50];

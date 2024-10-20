@@ -50,6 +50,7 @@ int main()
         char feedback[50] ;
     };
     struct loan {
+        int l_id ;
         int cust_id ;
         int emp_id ;
         int amount;
@@ -325,8 +326,23 @@ int main()
                         write(nsd,&t_ack,sizeof(t_ack));
                     }
                     else if (op == 5){
-                        int l_am ;
-                        read(sd,&)
+                        int l_am ,fd3;
+                        int last_l ;
+                        struct loan ln ,r_ln;
+                        read(nsd,&l_am,sizeof(l_am));
+                        ln.amount = l_am ;
+                        ln.cust_id = cli.cust_id ;
+                        ln.emp_id = 0 ;
+                        ln.count = 0;
+
+                        fd3 = open("loan_db", O_APPEND | O_RDWR);
+                        lseek(fd3,(-1)*sizeof(ln),SEEK_END);
+                        read(fd3,&r_ln,sizeof(r_ln));
+                        ln.l_id = r_ln.l_id + 1;
+                        close(fd3);
+                        fd3 = open("loan_db", O_APPEND | O_RDWR);
+                        write(fd3,&ln,sizeof(ln));
+                        close(fd3);
                     }
                     else if (op == 6){
 
@@ -523,15 +539,16 @@ int main()
                         cli.count = 0 ;
                         cli.paisa = 0 ;
                         cli.acc_status = false ;
-                        printf("name : %s\n",cli.cust_name);
-                        printf("id : %d\n",cli.cust_id);
-                        printf("pas : %d\n",cli.password);
-                        printf("balance : %d\n",cli.paisa);
+                        // printf("name : %s\n",cli.cust_name);
+                        // printf("id : %d\n",cli.cust_id);
+                        // printf("pas : %d\n",cli.password);
+                        // printf("balance : %d\n",cli.paisa);
 
 
                         lseek(fd2,0,SEEK_SET);
                         lseek(fd2,(start1-1)*sizeof(cli),SEEK_SET);
                         write(fd2,&cli,sizeof(cli));
+                        write(nsd,&(cli.cust_id),sizeof(cli.cust_id));
                         close(fd2);
                     }
                     else if (op == 2){
@@ -589,8 +606,8 @@ int main()
 
                     }
                     else if(op == 3){
-                        int l_am ;
-                        read(nsd,&l_am,sizeof(l_am));
+                        
+
                     }
                     else if (op == 4){
 
@@ -780,7 +797,34 @@ int main()
                         close(fd2);
                     }
                     else if (op == 2){
+                        int al_id , a_id,start32 ;
+                        struct loan ln1, ln2 ;
+                        read(nsd,&a_id,sizeof(al_id));
+                        read(nsd,&a_id,sizeof(a_id));
+
+                        fd1 = open("loan_db",O_RDWR);
+                        start32 = al_id %100 ;
                         
+                        struct flock lck ;
+                        
+                        lck.l_start = (start32-1)*sizeof(ln1);
+                        lck.l_len = sizeof(ln1) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start32-1)*sizeof(ln1),SEEK_SET);
+                        read(fd1,&ln1,sizeof(ln1));
+                        
+                        ln1.emp_id = a_id ;
+                        lseek(fd1,(start32-1)*sizeof(ln1),SEEK_SET);
+                        write(fd1,&ln1,sizeof(ln1));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+
                     }
                     else if(op == 3){
                         int f_id,f_last ;

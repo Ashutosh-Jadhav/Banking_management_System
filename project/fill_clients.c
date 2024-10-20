@@ -22,11 +22,11 @@ int main()
     strcpy(c1.cust_name,s);
     c1.cust_id = 101 ;
     c1.password = 1234;
-    c1.paisa = 3000;
+    c1.paisa = 5000;
     c1.acc_status = true ;
     c1.count = 0 ;
 
-    fd1 = open("clients_db",O_CREAT | O_EXCL | O_RDWR , 0744);
+    fd1 = open("clients_db", O_RDWR | O_CREAT,0744 );
     // lseek(fd1,sizeof(c1),SEEK_SET);
     write(fd1,&c1,sizeof(c1));
     close(fd1);
