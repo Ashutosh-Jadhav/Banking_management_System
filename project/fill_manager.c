@@ -22,7 +22,7 @@ int main()
     m1.password = 1234;
     m1.count = 0;
 
-    fd1 = open("manager_db",O_CREAT | O_EXCL | O_RDWR , 0744);
+    fd1 = open("manager_db", O_RDWR );
     write(fd1,&m1,sizeof(m1));
     close(fd1);
     fd1 = open("manager_db",O_RDONLY);

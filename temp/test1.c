@@ -12,24 +12,21 @@ int main()
         char feedback[50] ;
     };
 
-    int fd1,last;
+    int fd1;
     struct feedback m1 ,m2;
+    char *s = "Mast hai Bank";
+    strcpy(m1.feedback,s);
+    m1.f_id = 101 ;
+    
+
+    fd1 = open("feedback_db", O_RDWR  );
+    lseek(fd1,0,SEEK_END);
+    write(fd1,&m1,sizeof(m1));
     close(fd1);
     fd1 = open("feedback_db",O_RDONLY);
 
-    lseek(fd1,-1*sizeof(m2),SEEK_END);
-
     read(fd1,&m2,sizeof(m2));
-    last = m2.f_id ;
-    lseek(fd1,0,SEEK_SET);
-
-    while(1){
-    read(fd1,&m2,sizeof(m2));
-
     printf("client id : %d\n",m2.f_id);
     printf("feed back : %s\n",m2.feedback);
-    if (m2.f_id == last){
-        break;
-    }
-    }
+
 }

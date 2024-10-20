@@ -45,6 +45,16 @@ int main()
         int password;
         int count ;
     };
+    struct feedback {
+        int f_id ;
+        char feedback[50] ;
+    };
+    struct loan {
+        int cust_id ;
+        int emp_id ;
+        int amount;
+        int count ;
+    };
 
     struct sockaddr_in serv, cli ;
     int sd,nsd,sz;
@@ -67,6 +77,7 @@ int main()
         // perror("");
         if (!fork()){
             // close(sd);
+            int l_ack = 1;
             printf("Im in\n");
 
 
@@ -80,9 +91,328 @@ int main()
             printf("choice is : %d\n",num);
             // login_as(num);
             if (num == 1){         // customer
+                int l_ack = 1;
                 read(nsd,&id,sizeof(id));
                 read(nsd,&pas,sizeof(pas));
 
+                                        // login starts
+                struct client cli ;
+                int start = id%100;
+                fd1 = open("clients_db",O_RDONLY);
+
+                struct flock lck ;
+                lck.l_start = (start-1)*sizeof(cli);
+                lck.l_len = sizeof(cli) ;
+                lck.l_type = F_RDLCK;
+                lck.l_whence = SEEK_SET;
+                lck.l_pid = getpid();
+                printf("before entering critical...\n");
+                fcntl(fd1,F_SETLKW,&lck);
+                lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                
+                read(fd1,&cli,sizeof(cli));
+
+                // printf("enter key : \n");
+                // getchar();
+                // getchar();
+
+                lck.l_type = F_UNLCK;
+                fcntl(fd1,F_SETLK,&lck);
+                close(fd1);
+                if (cli.count == 1){
+                    status = 2 ;
+                    write(nsd,&status,sizeof(int));
+                }
+                else if (id == cli.cust_id){
+                    if (cli.password == pas){
+                        status = 1 ;
+                        write(nsd,&status,sizeof(int));
+                    }
+                    else {
+                        status = 0 ;
+                        write(nsd,&status,sizeof(int));
+                    }
+                }
+                else {
+                    status = 0 ;
+                    write(nsd,&status,sizeof(int));
+                }
+
+                if (cli.count == -1){
+                    status = 0 ;
+                    write(nsd,&status,sizeof(int));
+                }
+                
+                
+
+                if (status == 0 || status == 2){write(nsd,&l_ack,sizeof(l_ack));continue;}
+                else {
+                    cli.count = 1 ;
+                    fd1 = open("clients_db",O_RDWR);
+
+                    struct flock lck ;
+                    lck.l_start = (start-1)*sizeof(cli);
+                    lck.l_len = sizeof(cli) ;
+                    lck.l_type = F_WRLCK;
+                    lck.l_whence = SEEK_SET;
+                    lck.l_pid = getpid();
+                    printf("before entering critical...\n");
+                    fcntl(fd1,F_SETLKW,&lck);
+                    lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                    
+                    write(fd1,&cli,sizeof(cli));
+
+                    lck.l_type = F_UNLCK;
+                    fcntl(fd1,F_SETLK,&lck);
+                    close(fd1);
+                    write(nsd,&l_ack,sizeof(l_ack));
+                }
+
+                                                // login ends
+                                                // operations start 
+
+                int op,fd2, last ;             // last :- last id
+                char name[10];
+                while(1){
+                    read(nsd,&op,sizeof(op));
+                    printf("operation is : %d\n",op);
+
+                    if (op == 1){
+
+                        fd1 = open("clients_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_RDLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        read(fd1,&cli,sizeof(cli));
+                        write(nsd,&(cli.paisa),sizeof(cli.paisa));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                    }
+                    else if (op == 2){
+                        int depo ;
+                        int d_ack=1 ;
+                        fd1 = open("clients_db",O_RDWR);
+                        read(nsd,&depo,sizeof(depo));
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        read(fd1,&cli,sizeof(cli));
+                        cli.paisa = cli.paisa + depo ;
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&d_ack,sizeof(d_ack));
+                    }
+                    else if (op == 3){
+                        int with ;
+                        int w_ack=1 ;
+                        fd1 = open("clients_db",O_RDWR);
+                        read(nsd,&with,sizeof(with));
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        read(fd1,&cli,sizeof(cli));
+                        if (cli.paisa < with){w_ack=0;write(nsd,&w_ack,sizeof(w_ack));continue;}
+                        cli.paisa = cli.paisa - with ;
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&w_ack,sizeof(w_ack));
+                    }
+                    else if (op == 4){
+                        struct client cli2 ;
+                        int with ,t_id,s_rec;
+                        int t_ack=1 ,flag = 0;
+                        fd1 = open("clients_db",O_RDWR);
+                        read(nsd,&t_id,sizeof(t_id));
+                        read(nsd,&with,sizeof(with));
+                        s_rec = t_id %100 ;
+                        struct flock lck ;                // decreasing money
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli);
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        printf("Inside critical to decrease money\n");
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        read(fd1,&cli,sizeof(cli));
+                        if (cli.paisa < with){t_ack=0;write(nsd,&t_ack,sizeof(t_ack));continue;}
+                        cli.paisa = cli.paisa - with ;
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        printf("press enter to exit critical...\n");
+                        getchar();
+                        fcntl(fd1,F_SETLK,&lck);
+                                                            // receiving money
+                        lck.l_start = (s_rec-1)*sizeof(cli2);    
+                        lck.l_len = sizeof(cli2);
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        printf("Inside critical to receive money...\n");
+                        lseek(fd1,(s_rec-1)*sizeof(cli2),SEEK_SET);
+                        read(fd1,&cli2,sizeof(cli2));
+                        if (cli2.count < 0){t_ack=2;write(nsd,&t_ack,sizeof(t_ack));flag = 1;}
+                        else {
+                            cli2.paisa = cli2.paisa+ with ;
+                            lseek(fd1,(s_rec-1)*sizeof(cli2),SEEK_SET);
+                            write(fd1,&cli2,sizeof(cli2));
+                        }
+
+                        lck.l_type = F_UNLCK;
+                        printf("press enter to exit critical...\n");
+                        getchar();
+                        fcntl(fd1,F_SETLK,&lck);
+
+                        if (flag == 1){                     // refund
+                            lck.l_start = (start-1)*sizeof(cli);
+                            lck.l_len = sizeof(cli) ;
+                            lck.l_type = F_WRLCK;
+                            lck.l_whence = SEEK_SET;
+                            lck.l_pid = getpid();
+                            printf("before entering critical...\n");
+                            fcntl(fd1,F_SETLKW,&lck);
+                            printf("inside critical to refund...\n");
+                            lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                            read(fd1,&cli,sizeof(cli));
+                            cli.paisa = cli.paisa + with ;
+                            lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                            write(fd1,&cli,sizeof(cli));
+
+                            lck.l_type = F_UNLCK;
+                            printf("enter to exit critical\n");
+                            getchar();
+                            getchar();
+                            fcntl(fd1,F_SETLK,&lck);
+                        }
+
+                        close(fd1);
+
+
+                        write(nsd,&t_ack,sizeof(t_ack));
+                    }
+                    else if (op == 5){
+                        int l_am ;
+                        read(sd,&)
+                    }
+                    else if (op == 6){
+
+                        int ack = 1 ;
+                        fd1 = open("clients_db",O_RDWR);
+                        int new_pass ;
+                        struct flock lck ;
+                        read(nsd,&new_pass,sizeof(int));
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        
+                        cli.password = new_pass;
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&ack,sizeof(ack));
+
+                    }
+                    else if (op == 7){
+                        struct feedback f1;
+                        char feed[50];
+                        int fd2 ;
+                        fd2 = open("feedback_db",O_RDWR | O_APPEND);
+                        f1.f_id = cli.cust_id ;
+                        read(nsd,feed,sizeof(feed));
+                        strcpy(f1.feedback,feed);
+                        // printf("feedback : %s\n",f1.feedback);
+                        // printf("f_id : %d\n",f1.f_id);
+                        write(fd2,&f1,sizeof(f1));
+                        close(fd2);
+
+                    }
+                    else if (op == 8){
+
+                    }
+                    else if(op == 9) {
+                        fd1 = open("clients_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        cli.count = 0 ;
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        break;
+                    }
+                    else{
+                        fd1 = open("clients_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(cli),SEEK_SET);
+                        cli.count = 0 ;
+                        write(fd1,&cli,sizeof(cli));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        exit(0);
+                    }
+
+                }
+                
 
                 
             }
@@ -91,6 +421,244 @@ int main()
                 read(nsd,&id,sizeof(id));
                 read(nsd,&pas,sizeof(pas));
 
+                                        // login starts
+                struct emp em ;
+                int start = id%100;
+                fd1 = open("emp_db",O_RDONLY);
+
+                struct flock lck ;
+                lck.l_start = (start-1)*sizeof(em);
+                lck.l_len = sizeof(em) ;
+                lck.l_type = F_RDLCK;
+                lck.l_whence = SEEK_SET;
+                lck.l_pid = getpid();
+                printf("before entering critical...\n");
+                fcntl(fd1,F_SETLKW,&lck);
+                lseek(fd1,(start-1)*sizeof(em),SEEK_SET);
+                
+                read(fd1,&em,sizeof(em));
+
+                // printf("enter key : \n");
+                // getchar();
+                // getchar();
+
+                lck.l_type = F_UNLCK;
+                fcntl(fd1,F_SETLK,&lck);
+                close(fd1);
+                if (em.count == 1){
+                    status = 2 ;
+                    // write(nsd,&status,sizeof(int));
+                }
+                else if (id == em.emp_id){
+                    if (em.password == pas){
+                        status = 1 ;
+                        // write(nsd,&status,sizeof(int));
+                    }
+                    else {
+                        status = 0 ;
+                        // write(nsd,&status,sizeof(int));
+                    }
+                }
+                else {
+                    
+                    status = 0 ;
+                    
+                    // write(nsd,&status,sizeof(int));
+                }
+                if (em.count == -1){
+                    status = 0 ;
+                }
+
+                write(nsd,&status,sizeof(int));
+
+                if (status == 0 || status == 2){write(nsd,&l_ack,sizeof(l_ack));continue;}
+                else {
+                    em.count = 1 ;
+                    fd1 = open("emp_db",O_RDWR);
+
+                    struct flock lck ;
+                    lck.l_start = (start-1)*sizeof(em);
+                    lck.l_len = sizeof(em) ;
+                    lck.l_type = F_WRLCK;
+                    lck.l_whence = SEEK_SET;
+                    lck.l_pid = getpid();
+                    printf("before entering critical...\n");
+                    fcntl(fd1,F_SETLKW,&lck);
+                    lseek(fd1,(start-1)*sizeof(em),SEEK_SET);
+                    
+                    write(fd1,&em,sizeof(em));
+
+                    lck.l_type = F_UNLCK;
+                    fcntl(fd1,F_SETLK,&lck);
+                    close(fd1);
+                    write(nsd,&l_ack,sizeof(l_ack));
+                }
+
+                                                // login ends
+                // operations start 
+
+                int op,fd2, last ;             // last :- last id
+                char name[10];
+                while(1){
+                    read(nsd,&op,sizeof(op));
+                    printf("operation is : %d\n",op);
+                    if (op == 1){
+                        struct client cli;
+                        char c_name[10];
+                        int start1 ;
+                        fd2 = open("clients_db",O_RDWR);
+
+                        lseek(fd2,-1*sizeof(cli),SEEK_END);
+
+                        read(fd2,&cli,sizeof(cli));
+                        last = cli.cust_id ;
+                        printf("last is : %d\n",last);
+
+                        cli.cust_id = last + 1 ;
+                        start1 = (last + 1)%100;
+                        read(nsd,c_name,sizeof(c_name));
+                        perror("");
+                        read(nsd,&(cli.password),sizeof(cli.password));
+                        strcpy(cli.cust_name , c_name) ;
+                        cli.count = 0 ;
+                        cli.paisa = 0 ;
+                        cli.acc_status = false ;
+                        printf("name : %s\n",cli.cust_name);
+                        printf("id : %d\n",cli.cust_id);
+                        printf("pas : %d\n",cli.password);
+                        printf("balance : %d\n",cli.paisa);
+
+
+                        lseek(fd2,0,SEEK_SET);
+                        lseek(fd2,(start1-1)*sizeof(cli),SEEK_SET);
+                        write(fd2,&cli,sizeof(cli));
+                        close(fd2);
+                    }
+                    else if (op == 2){
+
+                        int id,start2 ;
+                        int balance ;
+                        char name[10];
+                        struct client cli ;
+                        read(nsd,&id,sizeof(id));
+                        start2 = id%100 ;
+                        fd1 = open("clients_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start2-1)*sizeof(cli);
+                        lck.l_len = sizeof(cli) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start2-1)*sizeof(cli),SEEK_SET);
+                        
+                        read(fd1,&cli,sizeof(cli));
+                        
+
+                        write(nsd,&(cli.paisa),sizeof(cli.paisa));
+                        write(nsd,&(cli.cust_name),sizeof(cli.cust_name));
+                        int inner ;                                           // for name and balance
+                        read(nsd,&inner,sizeof(inner));
+                        if (inner==1){
+                            read(nsd,&(cli.cust_name),sizeof(cli.cust_name));
+                            lseek(fd1,(start2-1)*sizeof(cli),SEEK_SET);
+                            write(fd1,&cli,sizeof(cli));
+                            lseek(fd1,(start2-1)*sizeof(cli),SEEK_SET);
+                            read(fd1,&cli,sizeof(cli));
+                            write(nsd,&(cli.cust_name),sizeof(cli.cust_name));
+                        }
+                        else if (inner == 2)
+                        {
+                            read(nsd,&(cli.paisa),sizeof(cli.paisa));
+                            lseek(fd1,(start2-1)*sizeof(cli),SEEK_SET);
+                            write(fd1,&cli,sizeof(cli));
+                            lseek(fd1,(start2-1)*sizeof(cli),SEEK_SET);
+                            read(fd1,&cli,sizeof(cli));
+                            write(nsd,&(cli.paisa),sizeof(cli.paisa));
+                        }
+                        // printf("enter key : \n");
+                        // getchar();
+                        // getchar();
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&(cli.cust_id),sizeof(cli.cust_id));
+
+                    }
+                    else if(op == 3){
+                        int l_am ;
+                        read(nsd,&l_am,sizeof(l_am));
+                    }
+                    else if (op == 4){
+
+                    }
+                    else if (op == 5){
+                        int ack = 1 ;
+                        fd1 = open("emp_db",O_RDWR);
+                        int new_pass ;
+                        struct flock lck ;
+                        read(nsd,&new_pass,sizeof(int));
+                        lck.l_start = (start-1)*sizeof(em);
+                        lck.l_len = sizeof(em) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(em),SEEK_SET);
+                        
+                        em.password = new_pass;
+                        write(fd1,&em,sizeof(em));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        write(nsd,&ack,sizeof(ack));
+                    }
+                    else if(op == 6) {
+                        fd1 = open("emp_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(em);
+                        lck.l_len = sizeof(em) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(em),SEEK_SET);
+                        em.count = 0 ;
+                        write(fd1,&em,sizeof(em));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        break;
+                    }
+                    else{
+                        fd1 = open("emp_db",O_RDWR);
+
+                        struct flock lck ;
+                        lck.l_start = (start-1)*sizeof(em);
+                        lck.l_len = sizeof(em) ;
+                        lck.l_type = F_WRLCK;
+                        lck.l_whence = SEEK_SET;
+                        lck.l_pid = getpid();
+                        printf("before entering critical...\n");
+                        fcntl(fd1,F_SETLKW,&lck);
+                        lseek(fd1,(start-1)*sizeof(em),SEEK_SET);
+                        em.count = 0 ;
+                        write(fd1,&em,sizeof(em));
+
+                        lck.l_type = F_UNLCK;
+                        fcntl(fd1,F_SETLK,&lck);
+                        close(fd1);
+                        exit(0);
+                    }
+                }
                 
             }
 
@@ -124,9 +692,9 @@ int main()
                 close(fd1);
                 if (mg.count == 1){
                     status = 2 ;
-                    // write(nsd,&status,sizeof(int));
+                    write(nsd,&status,sizeof(int));
                 }
-                if (id == mg.mg_id){
+                else if (id == mg.mg_id){
                     if (mg.password == pas){
                         status = 1 ;
                         write(nsd,&status,sizeof(int));
@@ -143,7 +711,7 @@ int main()
                     write(nsd,&status,sizeof(int));
                 }
 
-                if (status == 0 || status == 2){exit(0);}
+                if (status == 0 || status == 2){write(nsd,&l_ack,sizeof(l_ack));continue;}
                 else {
                     mg.count = 1 ;
                     fd1 = open("manager_db",O_RDWR);
@@ -163,6 +731,7 @@ int main()
                     lck.l_type = F_UNLCK;
                     fcntl(fd1,F_SETLK,&lck);
                     close(fd1);
+                    write(nsd,&l_ack,sizeof(l_ack));
                 }
 
                                                 // login ends
@@ -174,13 +743,13 @@ int main()
                     read(nsd,&op,sizeof(op));
                     printf("operation is : %d\n",op);
                     if (op == 1){
-                        int cust_id,start,ack = 1;
+                        int cust_id,start31,ack = 1;
                         struct client cli ;
                         fd2 = open("clients_db",O_RDWR);
                         read(nsd,&cust_id,sizeof(cust_id));
-                        start = cust_id % 100;
+                        start31 = cust_id % 100;
                         struct flock lck ;
-                        lck.l_start = (start-1)*sizeof(cli);
+                        lck.l_start = (start31-1)*sizeof(cli);
                         lck.l_len = sizeof(cli);
                         lck.l_type = F_WRLCK ;
                         lck.l_whence = SEEK_SET ;
@@ -188,7 +757,7 @@ int main()
                         printf("before entering critical...\n");
                         fcntl(fd2,F_SETLKW,&lck);
 
-                        lseek(fd2,(start-1)*sizeof(cli),SEEK_SET);
+                        lseek(fd2,(start31-1)*sizeof(cli),SEEK_SET);
                         read(fd2,&cli,sizeof(cli));
                         if (cli.count == -1)
                         {
@@ -201,7 +770,7 @@ int main()
                             ack = 0 ;
                         }
                         if (ack){
-                            lseek(fd2,(start-1)*sizeof(cli),SEEK_SET);
+                            lseek(fd2,(start31-1)*sizeof(cli),SEEK_SET);
                             write(fd2,&cli,sizeof(cli));
                         }
 
@@ -214,7 +783,33 @@ int main()
                         
                     }
                     else if(op == 3){
-                        
+                        int f_id,f_last ;
+                        char feedback[50];
+                        struct feedback f1,f2;
+                        fd1 = open("feedback_db",O_RDWR);
+                        // read(nsd,&f_id,sizeof(f_id));
+
+                        lseek(fd1,-1*sizeof(f2),SEEK_END);
+
+                        read(fd1,&f2,sizeof(f2));
+                        f_last = f2.f_id ;
+                        write(nsd,&f_last,sizeof(f_last));
+                        lseek(fd1,0,SEEK_SET);
+
+                        while(1){
+                            read(fd1,&f2,sizeof(f2));
+                            write(nsd,&(f2.f_id),sizeof(f2.f_id));
+                            strcpy(feedback,f2.feedback);
+                            write(nsd,feedback,sizeof(feedback));
+                            // printf("client id : %d\n",f2.f_id);
+                            // printf("feed back : %s\n",f2.feedback);
+                            if (f2.f_id == f_last){
+                                break;
+                            }
+                            }
+
+                        close(fd1);
+
                     }
                     else if(op == 4){
                         int ack = 1 ;
@@ -320,9 +915,9 @@ int main()
                 close(fd1);
                 if (ad.count == 1){
                     status = 2 ;
-                    // write(nsd,&status,sizeof(int));
+                    write(nsd,&status,sizeof(int));
                 }
-                if (id == ad.admin_id){
+                else if (id == ad.admin_id){
                     if (ad.password == pas){
                         status = 1 ;
                         write(nsd,&status,sizeof(int));
@@ -333,13 +928,13 @@ int main()
                     }
                 }
                 else {
-                    if (id != ad.admin_id){
-                        status = 0 ;
-                    }
+                    
+                    status = 0 ;
+                    
                     write(nsd,&status,sizeof(int));
                 }
 
-                if (status == 0 || status == 2){exit(0);}
+                if (status == 0 || status == 2){write(nsd,&l_ack,sizeof(l_ack));continue;}
                 else {
                     ad.count = 1 ;
                     fd1 = open("admin_db",O_RDWR);
@@ -359,6 +954,7 @@ int main()
                     lck.l_type = F_UNLCK;
                     fcntl(fd1,F_SETLK,&lck);
                     close(fd1);
+                    write(nsd,&l_ack,sizeof(l_ack));
                 }
 
                 // login ends
@@ -479,6 +1075,7 @@ int main()
                         lseek(fd1,(start3-1)*sizeof(em),SEEK_SET);
                         
                         read(fd1,&em,sizeof(em));
+                        if(em.count == 1){check = 2;write(nsd,&check,sizeof(check));continue;}
                         if(em.count == -1){write(nsd,&check,sizeof(check));continue;} 
                         check = 1 ;
                         write(nsd,&check,sizeof(check));

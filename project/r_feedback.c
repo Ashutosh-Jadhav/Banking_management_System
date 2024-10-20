@@ -22,14 +22,15 @@ int main()
     read(fd1,&m2,sizeof(m2));
     last = m2.f_id ;
     lseek(fd1,0,SEEK_SET);
-
+    int c = 0 ;
     while(1){
     read(fd1,&m2,sizeof(m2));
-
+    c++ ;
     printf("client id : %d\n",m2.f_id);
     printf("feed back : %s\n",m2.feedback);
-    if (m2.f_id == last){
-        break;
-    }
+    if (c == 2){break;}
+    // if (m2.f_id == last){
+    //     break;
+    // }
     }
 }
